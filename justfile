@@ -2,13 +2,13 @@
 # Set your target chip before running any commands
 # Options: esp32, esp32s2, esp32s3, esp32c2, esp32c3, esp32c6, esp32h2
 
-TARGET := ""
+TARGET := "esp32c3"
 
 # Libs
 # Set your development target for libraries to be tested as part of this project.
 # Options: aarch64-apple-darwin
 
-DEV_TARGET := ""
+DEV_TARGET := "aarch64-apple-darwin"
 LIB_NAME := ""
 
 default:
