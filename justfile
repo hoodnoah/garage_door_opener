@@ -9,7 +9,7 @@ TARGET := "esp32c3"
 # Options: aarch64-apple-darwin
 
 DEV_TARGET := "aarch64-apple-darwin"
-LIB_NAME := ""
+LIB_NAME := "lib"
 
 default:
     @just --list
