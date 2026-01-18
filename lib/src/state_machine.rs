@@ -75,7 +75,7 @@ impl GDStateMachine {
             },
         };
 
-        og_state == self.state
+        og_state != self.state
     }
 }
 
