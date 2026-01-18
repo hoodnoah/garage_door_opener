@@ -77,11 +77,22 @@ impl GDStateMachine {
 
         og_state != self.state
     }
+
+    pub fn state(&self) -> GDState {
+        self.state
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn new_with_state(state: GDState) -> GDStateMachine {
+        let mut sm = GDStateMachine::new();
+        sm.state = state;
+
+        sm
+    }
 
     #[test]
     fn starts_unknown() {
@@ -124,8 +135,7 @@ mod tests {
 
     #[test]
     fn closed_and_closed_is_closed() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Closed;
+        let mut sm = new_with_state(GDState::Closed);
 
         sm.update(DoorPosition::FullyClosed);
 
@@ -134,8 +144,7 @@ mod tests {
 
     #[test]
     fn closed_and_moving_is_opening() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Closed;
+        let mut sm = new_with_state(GDState::Closed);
 
         sm.update(DoorPosition::Moving);
 
@@ -144,8 +153,7 @@ mod tests {
 
     #[test]
     fn closed_and_open_is_open() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Closed;
+        let mut sm = new_with_state(GDState::Closed);
 
         sm.update(DoorPosition::FullyOpen);
 
@@ -154,8 +162,7 @@ mod tests {
 
     #[test]
     fn closed_and_unknown_is_unknown() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Closed;
+        let mut sm = new_with_state(GDState::Closed);
 
         sm.update(DoorPosition::Unknown);
 
@@ -164,8 +171,7 @@ mod tests {
 
     #[test]
     fn open_and_open_is_open() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Open;
+        let mut sm = new_with_state(GDState::Open);
 
         sm.update(DoorPosition::FullyOpen);
 
@@ -174,8 +180,7 @@ mod tests {
 
     #[test]
     fn open_and_moving_is_closing() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Open;
+        let mut sm = new_with_state(GDState::Open);
 
         sm.update(DoorPosition::Moving);
 
@@ -184,8 +189,7 @@ mod tests {
 
     #[test]
     fn open_and_closed_is_closed() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Open;
+        let mut sm = new_with_state(GDState::Open);
 
         sm.update(DoorPosition::FullyClosed);
 
@@ -194,8 +198,7 @@ mod tests {
 
     #[test]
     fn open_and_unknown_is_unknown() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Open;
+        let mut sm = new_with_state(GDState::Open);
 
         sm.update(DoorPosition::Unknown);
 
@@ -204,8 +207,7 @@ mod tests {
 
     #[test]
     fn closing_and_moving_is_closing() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Closing;
+        let mut sm = new_with_state(GDState::Closing);
 
         sm.update(DoorPosition::Moving);
 
@@ -214,8 +216,7 @@ mod tests {
 
     #[test]
     fn closing_and_closed_is_closed() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Closing;
+        let mut sm = new_with_state(GDState::Closing);
 
         sm.update(DoorPosition::FullyClosed);
 
@@ -224,8 +225,7 @@ mod tests {
 
     #[test]
     fn closing_and_unknown_is_safety_stopped_while_closing() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Closing;
+        let mut sm = new_with_state(GDState::Closing);
 
         sm.update(DoorPosition::Unknown);
 
@@ -234,8 +234,7 @@ mod tests {
 
     #[test]
     fn closing_and_open_is_safety_stopped_while_closing() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Closing;
+        let mut sm = new_with_state(GDState::Closing);
 
         sm.update(DoorPosition::FullyOpen);
 
@@ -244,8 +243,7 @@ mod tests {
 
     #[test]
     fn opening_and_open_is_open() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Opening;
+        let mut sm = new_with_state(GDState::Opening);
 
         sm.update(DoorPosition::FullyOpen);
 
@@ -254,8 +252,7 @@ mod tests {
 
     #[test]
     fn opening_and_closed_is_safety_stopped_while_opening() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Opening;
+        let mut sm = new_with_state(GDState::Opening);
 
         sm.update(DoorPosition::FullyClosed);
 
@@ -264,8 +261,7 @@ mod tests {
 
     #[test]
     fn opening_and_moving_is_opening() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Opening;
+        let mut sm = new_with_state(GDState::Opening);
 
         sm.update(DoorPosition::Moving);
 
@@ -274,8 +270,7 @@ mod tests {
 
     #[test]
     fn opening_and_unknown_is_safety_stopped_while_opening() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::Opening;
+        let mut sm = new_with_state(GDState::Opening);
 
         sm.update(DoorPosition::Unknown);
 
@@ -284,8 +279,7 @@ mod tests {
 
     #[test]
     fn stopped_closing_and_closed_is_closed() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::SafetyStoppedWhileClosing;
+        let mut sm = new_with_state(GDState::SafetyStoppedWhileClosing);
 
         sm.update(DoorPosition::FullyClosed);
 
@@ -294,8 +288,7 @@ mod tests {
 
     #[test]
     fn stopped_closing_and_moving_is_opening() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::SafetyStoppedWhileClosing;
+        let mut sm = new_with_state(GDState::SafetyStoppedWhileClosing);
 
         sm.update(DoorPosition::Moving);
 
@@ -304,8 +297,7 @@ mod tests {
 
     #[test]
     fn stopped_closing_and_unknown_is_stopped_closing() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::SafetyStoppedWhileClosing;
+        let mut sm = new_with_state(GDState::SafetyStoppedWhileClosing);
 
         sm.update(DoorPosition::Unknown);
 
@@ -314,8 +306,7 @@ mod tests {
 
     #[test]
     fn stopped_closing_and_open_is_open() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::SafetyStoppedWhileClosing;
+        let mut sm = new_with_state(GDState::SafetyStoppedWhileClosing);
 
         sm.update(DoorPosition::FullyOpen);
 
@@ -324,8 +315,7 @@ mod tests {
 
     #[test]
     fn stopped_opening_and_closed_is_closed() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::SafetyStoppedWhileOpening;
+        let mut sm = new_with_state(GDState::SafetyStoppedWhileOpening);
 
         sm.update(DoorPosition::FullyClosed);
 
@@ -334,8 +324,7 @@ mod tests {
 
     #[test]
     fn stopped_opening_and_open_is_open() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::SafetyStoppedWhileOpening;
+        let mut sm = new_with_state(GDState::SafetyStoppedWhileOpening);
 
         sm.update(DoorPosition::FullyOpen);
 
@@ -344,8 +333,7 @@ mod tests {
 
     #[test]
     fn stopped_opening_and_moving_is_closing() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::SafetyStoppedWhileOpening;
+        let mut sm = new_with_state(GDState::SafetyStoppedWhileOpening);
 
         sm.update(DoorPosition::Moving);
 
@@ -354,8 +342,7 @@ mod tests {
 
     #[test]
     fn stopped_opening_and_unknown_is_stopped_opening() {
-        let mut sm = GDStateMachine::new();
-        sm.state = GDState::SafetyStoppedWhileOpening;
+        let mut sm = new_with_state(GDState::SafetyStoppedWhileOpening);
 
         sm.update(DoorPosition::Unknown);
 
