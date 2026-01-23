@@ -17,6 +17,21 @@ pub enum GDState {
     Unknown,
 }
 
+impl Display for GDState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use GDState::*;
+        match self {
+            Open => write!(f, "open"),
+            Closed => write!(f, "closed"),
+            Opening => write!(f, "opening"),
+            Closing => write!(f, "closing"),
+            SafetyStoppedWhileClosing => write!(f, "safety_stopped_during_close"),
+            SafetyStoppedWhileOpening => write!(f, "sagety_stopped_during_closed"),
+            Unknown => write!(f, "unknown"),
+        }
+    }
+}
+
 pub struct GDStateMachine {
     state: GDState,
 }
