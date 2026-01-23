@@ -6,10 +6,10 @@ use esp_idf_svc::{
 };
 use lib::state_machine::GDState;
 
-const STATE_TOPIC: &str = "basement_garage/state";
-const STATUS_TOPIC: &str = "basement_garage/status";
-const ERROR_TOPIC: &str = "basement_garage/error";
-const COMMAND_TOPIC: &str = "basement_garage/command";
+const STATE_TOPIC: &str = "basement_gdopener/state";
+const STATUS_TOPIC: &str = "basement_gdopener/status";
+const ERROR_TOPIC: &str = "basement_gdopener/error";
+const COMMAND_TOPIC: &str = "basement_gdopener/command";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GarageCommand {
