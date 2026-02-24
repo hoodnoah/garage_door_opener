@@ -19,7 +19,15 @@ setup:
     cargo install espup
     cargo install cargo-espflash espflash
     espup install --targets "{{ TARGET }}"
-    @echo "Restart shell: exit, then nix develop"
+    @echo "✅ Setup complete!"
+    @echo "Next steps:"
+    @echo "  1. Source ESP environment: source env.fish"
+    @echo "  2. Verify dependencies: just check-deps"
+    @echo "  3. Set environment variables (copy .env.example to main/.env)"
+    @echo "  4. Build: just build"
+
+check-deps:
+    @./scripts/check-deps.sh
 
 new:
     cargo generate esp-rs/esp-idf-template --name main

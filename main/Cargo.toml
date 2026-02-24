@@ -46,3 +46,4 @@ lib = {path = "../lib" }
 
 [build-dependencies]
 embuild = "0.33"
+dotenvy = "0.15"

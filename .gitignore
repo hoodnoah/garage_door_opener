@@ -20,9 +20,8 @@ sdkconfig.old
 # macOS
 .DS_Store
 
-# direnv
+# env
 .direnv/
-.envrc.local
 
 # env
 .env
