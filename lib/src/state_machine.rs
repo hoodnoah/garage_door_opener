@@ -28,7 +28,7 @@ impl Display for GDState {
             Opening => write!(f, "opening"),
             Closing => write!(f, "closing"),
             SafetyStoppedWhileClosing => write!(f, "safety_stopped_during_close"),
-            SafetyStoppedWhileOpening => write!(f, "sagety_stopped_during_closed"),
+            SafetyStoppedWhileOpening => write!(f, "safety_stopped_during_open"),
             Unknown => write!(f, "unknown"),
         }
     }
@@ -97,6 +97,30 @@ impl GDStateMachine {
 
     pub fn state(&self) -> GDState {
         self.state
+    }
+
+    pub fn can_close(&self) -> bool {
+        match self.state {
+            GDState::Open => true,
+            GDState::Closed => false,
+            GDState::Opening => true,
+            GDState::Closing => false,
+            GDState::SafetyStoppedWhileOpening => true,
+            GDState::SafetyStoppedWhileClosing => false,
+            GDState::Unknown => false,
+        }
+    }
+
+    pub fn can_open(&self) -> bool {
+        match self.state {
+            GDState::Open => false,
+            GDState::Closed => true,
+            GDState::Opening => false,
+            GDState::Closing => true,
+            GDState::SafetyStoppedWhileOpening => false,
+            GDState::SafetyStoppedWhileClosing => true,
+            GDState::Unknown => false,
+        }
     }
 }
 
