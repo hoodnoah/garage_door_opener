@@ -92,7 +92,9 @@ impl<'a> GDMQTT<'a> {
             }
             if std::time::Instant::now() > deadline {
                 log::error!("MQTT connection timed out");
-                return Err(EspError::from_infallible::<{ esp_idf_svc::sys::ESP_ERR_TIMEOUT }>());
+                return Err(EspError::from_infallible::<
+                    { esp_idf_svc::sys::ESP_ERR_TIMEOUT },
+                >());
             }
             std::thread::sleep(Duration::from_millis(100));
         }
@@ -117,7 +119,7 @@ impl<'a> GDMQTT<'a> {
 
     pub fn publish_status(&mut self) -> Result<u32, EspError> {
         self.client
-            .publish(STATUS_TOPIC, QoS::AtLeastOnce, false, b"online")
+            .publish(STATUS_TOPIC, QoS::AtMostOnce, false, b"online")
     }
 
     pub fn publish_error(&mut self, error_msg: String) -> Result<u32, EspError> {

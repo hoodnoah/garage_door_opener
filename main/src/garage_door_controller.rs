@@ -1,6 +1,9 @@
 use std::time::{Duration, Instant};
 
-use crate::reed_switch::{ReedSwitch, SwitchState};
+use crate::{
+    button::Button,
+    reed_switch::{ReedSwitch, SwitchState},
+};
 use esp_idf_svc::{
     hal::gpio::{InputPin, OutputPin},
     sys::EspError,
@@ -10,31 +13,37 @@ use lib::{
     GDStateMachine,
 };
 
-pub struct GarageDoorController<'a, T1, T2>
+pub struct GarageDoorController<'a, T1, T2, T3>
 where
     T1: InputPin + OutputPin,
     T2: InputPin + OutputPin,
+    T3: InputPin + OutputPin,
 {
     open_switch: ReedSwitch<'a, T1>,
     closed_switch: ReedSwitch<'a, T2>,
+    button: Button<'a, T3>,
     state_machine: GDStateMachine,
     last_state_change: Instant,
 }
 
-impl<'a, T1, T2> GarageDoorController<'a, T1, T2>
+impl<'a, T1, T2, T3> GarageDoorController<'a, T1, T2, T3>
 where
     T1: InputPin + OutputPin,
     T2: InputPin + OutputPin,
+    T3: InputPin + OutputPin,
 {
     const TRANSITION_TIMEOUT_SECONDS: u64 = 20;
+    const BUTTON_PULSE_DURATION: Duration = Duration::from_millis(500);
 
     pub fn new(
         open_switch: ReedSwitch<'a, T1>,
         closed_switch: ReedSwitch<'a, T2>,
+        button: Button<'a, T3>,
     ) -> Result<Self, EspError> {
         Ok(Self {
             open_switch,
             closed_switch,
+            button,
             state_machine: GDStateMachine::new(),
             last_state_change: Instant::now(),
         })
@@ -47,7 +56,7 @@ where
             (CircuitClosed, CircuitOpen) => DoorPosition::FullyOpen,
             (CircuitOpen, CircuitClosed) => DoorPosition::FullyClosed,
             (CircuitOpen, CircuitOpen) => DoorPosition::Moving,
-            (CircuitClosed, CircuitClosed) => DoorPosition::Unknown, // undefined; both switched closed¿
+            (CircuitClosed, CircuitClosed) => DoorPosition::Unknown, // undefined; both switches closed¿
             _ => DoorPosition::Unknown,                              // cannot be inferred
         }
     }
@@ -95,7 +104,19 @@ where
         self.state_machine.state()
     }
 
-    // pub fn is_safe(&self) -> bool {
-    //     !matches!(self.state(), GDState::Unknown)
-    // }
+    // attempts to open the door, if state allows.
+    pub fn try_open(&mut self) -> Result<(), EspError> {
+        match self.state_machine.can_open() {
+            true => self.button.pulse_blocking(Self::BUTTON_PULSE_DURATION),
+            false => Ok(()),
+        }
+    }
+
+    // attempts to close the door, if state allows.
+    pub fn try_close(&mut self) -> Result<(), EspError> {
+        match self.state_machine.can_close() {
+            true => self.button.pulse_blocking(Self::BUTTON_PULSE_DURATION),
+            false => Ok(()),
+        }
+    }
 }

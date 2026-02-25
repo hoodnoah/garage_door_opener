@@ -4,15 +4,12 @@ mod mqtt;
 mod reed_switch;
 mod wifi;
 
-use std::time::Duration;
-
 use button::Button;
 use esp_idf_svc::{
     hal::{delay::FreeRtos, peripherals::Peripherals},
     sys::EspError,
 };
 use garage_door_controller::GarageDoorController;
-use lib::state_machine::GDState;
 use mqtt::{GarageCommand, GDMQTT};
 use reed_switch::ReedSwitch;
 use wifi::WifiHandler;
@@ -31,8 +28,6 @@ const PIN_BUTTON: u32 = 6; //        GPIO6  - garage door button
 const LOOP_DELAY_MS: u32 = 100;
 const WIFI_CHECK_INTERVAL: u32 = 50; // ~5 s
 const STATUS_PUBLISH_INTERVAL: u32 = 100; // ~10 s
-
-const BUTTON_PULSE_DURATION: Duration = Duration::from_millis(500);
 
 fn log_publish_result(name: &str, result: Result<u32, EspError>) {
     match result {
@@ -59,10 +54,10 @@ fn main() -> anyhow::Result<()> {
     let open_switch = ReedSwitch::new(peripherals.pins.gpio21)?;
 
     // Button: GPIO6 - pulses high to trigger the garage door opener
-    let mut button = Button::new(peripherals.pins.gpio6)?;
+    let button = Button::new(peripherals.pins.gpio6)?;
 
     // Garage door controller wraps both reed switches and the state machine
-    let mut controller = GarageDoorController::new(open_switch, closed_switch)?;
+    let mut controller = GarageDoorController::new(open_switch, closed_switch, button)?;
 
     // WiFi
     log::info!("Connecting to WiFi SSID: {}", WIFI_SSID);
@@ -119,38 +114,25 @@ fn main() -> anyhow::Result<()> {
         if let Some(cmd) = mqtt.take_command() {
             log::info!("Received command: {:?} (current state: {:?})", cmd, state);
 
-            // Only pulse if the command makes sense for the current state.
-            // Both Open and Close result in a single button press (toggle).
-            let should_pulse = match cmd {
+            match cmd {
                 GarageCommand::Open => {
-                    !matches!(state, GDState::Open | GDState::Opening | GDState::Unknown)
+                    if let Err(e) = controller.try_open() {
+                        log::error!("Failed to open garage door: {:?}", e);
+                        log_publish_result(
+                            "error",
+                            mqtt.publish_error(format!("Open cmd error: {:?}", e)),
+                        );
+                    }
                 }
                 GarageCommand::Close => {
-                    !matches!(state, GDState::Closed | GDState::Closing | GDState::Unknown)
+                    if let Err(e) = controller.try_close() {
+                        log::error!("Failed to close garage door: {:?}", e);
+                        log_publish_result(
+                            "error",
+                            mqtt.publish_error(format!("Close cmd error: {:?}", e)),
+                        );
+                    }
                 }
-            };
-
-            if should_pulse {
-                log::info!(
-                    "Pulsing garage door button for {:?}ms",
-                    BUTTON_PULSE_DURATION
-                );
-                if let Err(e) = button.pulse_blocking(BUTTON_PULSE_DURATION) {
-                    log::error!("Button pulse failed: {:?}", e);
-                    log_publish_result(
-                        "error",
-                        mqtt.publish_error(format!("Button error: {:?}", e)),
-                    );
-                }
-            } else {
-                log::warn!("Command {:?} ignored in state {:?}", cmd, state);
-                log_publish_result(
-                    "error",
-                    mqtt.publish_error(format!(
-                        "Command {:?} rejected: door state {:?}",
-                        cmd, state
-                    )),
-                );
             }
         }
 
