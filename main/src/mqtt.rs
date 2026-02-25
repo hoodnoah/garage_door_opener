@@ -1,4 +1,7 @@
-use std::{sync::{Arc, Mutex}, time::Duration};
+use std::{
+    sync::{mpsc, Arc, Mutex},
+    time::Duration,
+};
 
 use esp_idf_svc::{
     mqtt::client::{EspMqttClient, EventPayload, MqttClientConfiguration, QoS},
@@ -10,6 +13,7 @@ const STATE_TOPIC: &str = "basement_gdopener/state";
 const STATUS_TOPIC: &str = "basement_gdopener/status";
 const ERROR_TOPIC: &str = "basement_gdopener/error";
 const COMMAND_TOPIC: &str = "basement_gdopener/command";
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GarageCommand {
@@ -24,11 +28,12 @@ impl GarageCommand {
             b"close" => Some(GarageCommand::Close),
             _ => None,
         }
+    }
 }
 
 pub struct GDMQTT<'a> {
     client: EspMqttClient<'a>,
-    last_command: Arc<Mutex<Option<GarageCommand>>>,
+    command_rx: mpsc::Receiver<GarageCommand>,
 }
 
 impl<'a> GDMQTT<'a> {
@@ -42,40 +47,70 @@ impl<'a> GDMQTT<'a> {
             client_id: Some(client_id),
             username: Some(username),
             password: Some(password),
+            keep_alive_interval: Some(Duration::from_secs(30)),
+            reconnect_timeout: Some(Duration::from_secs(5)),
             ..Default::default()
         };
 
-        let last_command = Arc::new(Mutex::new(None));
-        let last_command_clone = last_command.clone();
+        let (command_tx, command_rx) = mpsc::channel();
+        let connected = Arc::new(Mutex::new(false));
+        let connected_flag = connected.clone();
 
         let (mut client, mut connection) = EspMqttClient::new(mqtt_endpoint, &config)?;
 
-        // Subscribe to the command topic
-        client.subscribe(COMMAND_TOPIC, QoS::AtLeastOnce)?;
-
-        // Spawn thread to handle incoming messages
+        // The connection thread drives the MQTT state machine; it must be
+        // running before we can subscribe or publish.
         std::thread::spawn(move || {
             while let Ok(event) = connection.next() {
-                if let EventPayload::Received {data, ..} = event.payload() {
-                    if let Some(cmd) = GarageCommand::from_bytes(data) {
-                        *last_command_clone.lock().unwrap() = Some(cmd);
+                match event.payload() {
+                    EventPayload::Connected(_) => {
+                        log::info!("MQTT connected");
+                        if let Ok(mut flag) = connected_flag.lock() {
+                            *flag = true;
+                        }
                     }
+                    EventPayload::Received { data, .. } => {
+                        if let Some(cmd) = GarageCommand::from_bytes(data) {
+                            if command_tx.send(cmd).is_err() {
+                                break;
+                            }
+                        }
+                    }
+                    EventPayload::Error(e) => {
+                        log::error!("MQTT error: {:?}", e);
+                    }
+                    _ => {}
                 }
             }
         });
 
-        Ok(Self { client, last_command })
+        // Wait for the broker connection before returning.
+        let deadline = std::time::Instant::now() + CONNECT_TIMEOUT;
+        loop {
+            if *connected.lock().unwrap() {
+                break;
+            }
+            if std::time::Instant::now() > deadline {
+                log::error!("MQTT connection timed out");
+                return Err(EspError::from_infallible::<{ esp_idf_svc::sys::ESP_ERR_TIMEOUT }>());
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        client.subscribe(COMMAND_TOPIC, QoS::AtLeastOnce)?;
+
+        Ok(Self { client, command_rx })
     }
 
-    pub fn take_command(&mut self) -> Option<GarageCommand>  {
-        self.last_command.lock().unwrap().take()
+    pub fn take_command(&mut self) -> Option<GarageCommand> {
+        self.command_rx.try_recv().ok()
     }
 
     pub fn publish_state(&mut self, state: GDState) -> Result<u32, EspError> {
         self.client.publish(
             STATE_TOPIC,
             QoS::AtLeastOnce,
-            true, // state is set and kept, retain means we keep it
+            true,
             state.to_string().as_bytes(),
         )
     }
@@ -89,5 +124,4 @@ impl<'a> GDMQTT<'a> {
         self.client
             .publish(ERROR_TOPIC, QoS::AtLeastOnce, false, error_msg.as_bytes())
     }
-}
 }

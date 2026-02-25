@@ -37,7 +37,7 @@ build:
     cargo build --release
 
 flash:
-    cargo espflash flash --release --monitor
+    cargo espflash flash --release --monitor --partition-table partitions.csv
 
 monitor:
     cargo espflash monitor

@@ -95,7 +95,7 @@ where
         self.state_machine.state()
     }
 
-    pub fn is_safe(&self) -> bool {
-        !matches!(self.state(), GDState::Unknown)
-    }
+    // pub fn is_safe(&self) -> bool {
+    //     !matches!(self.state(), GDState::Unknown)
+    // }
 }

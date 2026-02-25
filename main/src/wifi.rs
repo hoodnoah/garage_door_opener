@@ -2,8 +2,8 @@ use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     hal::{delay::FreeRtos, modem::Modem},
     nvs::EspDefaultNvsPartition,
-    sys::EspError,
-    wifi::{BlockingWifi, ClientConfiguration, Configuration, EspWifi},
+    sys::{esp, esp_wifi_set_max_tx_power, EspError},
+    wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi},
 };
 
 pub struct WifiHandler<'a> {
@@ -20,19 +20,67 @@ impl<'a> WifiHandler<'a> {
             sys_loop.clone(),
         )?;
 
-        wifi.start()?;
-
         wifi.set_configuration(&Configuration::Client(ClientConfiguration {
             ssid: wifi_ssid.try_into().unwrap(),
             password: wifi_password.try_into().unwrap(),
+            auth_method: AuthMethod::WPA2Personal,
             ..Default::default()
         }))?;
 
-        Ok(Self { wifi: wifi })
+        wifi.start()?;
+
+        // ESP32-C3 Super Mini v1 has a broken antenna design; reducing TX power
+        // avoids signal reflections that corrupt frames and cause auth failures.
+        // 34 = 8.5 dBm in quarter-dBm units.
+        esp!(unsafe { esp_wifi_set_max_tx_power(34) })?;
+
+        Ok(Self { wifi })
     }
 
     pub fn connect(&mut self) -> Result<(), EspError> {
-        self.wifi.connect()?;
-        Ok(FreeRtos::delay_ms(10000))
+        const MAX_RETRIES: u32 = 5;
+        const RETRY_DELAY_MS: u32 = 2_000;
+
+        for attempt in 1..=MAX_RETRIES {
+            match self.wifi.connect() {
+                Ok(_) => {
+                    self.wifi.wait_netif_up()?;
+                    return Ok(());
+                }
+                Err(e) if attempt < MAX_RETRIES => {
+                    log::warn!(
+                        "WiFi connect attempt {}/{} failed: {:?}, retrying...",
+                        attempt,
+                        MAX_RETRIES,
+                        e
+                    );
+                    FreeRtos::delay_ms(RETRY_DELAY_MS);
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        unreachable!()
+    }
+
+    pub fn is_connected(&self) -> Result<bool, EspError> {
+        self.wifi.is_connected()
+    }
+
+    pub fn ensure_connected(&mut self) -> Result<bool, EspError> {
+        if !self.is_connected()? {
+            log::warn!("WiFi disconnected, attempting reconnection...");
+            match self.connect() {
+                Ok(_) => {
+                    log::info!("WiFi reconnected successfully");
+                    Ok(true)
+                }
+                Err(e) => {
+                    log::error!("WiFi reconnection failed: {:?}", e);
+                    Err(e)
+                }
+            }
+        } else {
+            Ok(true)
+        }
     }
 }
