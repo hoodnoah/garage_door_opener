@@ -9,7 +9,7 @@ use esp_idf_svc::{
     hal::{delay::FreeRtos, peripherals::Peripherals},
     sys::EspError,
 };
-use garage_door_controller::GarageDoorController;
+use garage_door_controller::{ControllerError, GarageDoorController};
 use mqtt::{GarageCommand, GDMQTT};
 use reed_switch::ReedSwitch;
 use wifi::WifiHandler;
@@ -27,7 +27,7 @@ const PIN_BUTTON: u32 = 6; //        GPIO6  - garage door button
 
 const LOOP_DELAY_MS: u32 = 100;
 const WIFI_CHECK_INTERVAL: u32 = 50; // ~5 s
-const STATUS_PUBLISH_INTERVAL: u32 = 100; // ~10 s
+const STATUS_PUBLISH_INTERVAL: u32 = 600; // ~10 s
 
 fn log_publish_result(name: &str, result: Result<u32, EspError>) {
     match result {
@@ -70,6 +70,12 @@ fn main() -> anyhow::Result<()> {
     let mut mqtt = GDMQTT::new("basement_gdopener", MQTT_ENDPOINT, MQTT_USER, MQTT_PASS)?;
     log_publish_result("status", mqtt.publish_status());
     log::info!("MQTT ready");
+
+    // Publish initial door state (state_changed won't fire if door starts Unknown)
+    controller.update();
+    let initial_state = controller.state();
+    log::info!("Initial door state: {:?}", initial_state);
+    log_publish_result("state", mqtt.publish_state(initial_state));
 
     let mut wifi_connected = true;
     let mut loops_since_wifi_check = 0u32;
@@ -117,20 +123,34 @@ fn main() -> anyhow::Result<()> {
             match cmd {
                 GarageCommand::Open => {
                     if let Err(e) = controller.try_open() {
-                        log::error!("Failed to open garage door: {:?}", e);
-                        log_publish_result(
-                            "error",
-                            mqtt.publish_error(format!("Open cmd error: {:?}", e)),
-                        );
+                        match &e {
+                            ControllerError::InvalidState(s) => {
+                                log::warn!("Open ignored: door is {}", s)
+                            }
+                            ControllerError::HardwareError(_) => {
+                                log::error!("Failed to open garage door: {}", e);
+                                log_publish_result(
+                                    "error",
+                                    mqtt.publish_error(format!("Open cmd error: {}", e)),
+                                );
+                            }
+                        }
                     }
                 }
                 GarageCommand::Close => {
                     if let Err(e) = controller.try_close() {
-                        log::error!("Failed to close garage door: {:?}", e);
-                        log_publish_result(
-                            "error",
-                            mqtt.publish_error(format!("Close cmd error: {:?}", e)),
-                        );
+                        match &e {
+                            ControllerError::InvalidState(s) => {
+                                log::warn!("Close ignored: door is {}", s)
+                            }
+                            ControllerError::HardwareError(_) => {
+                                log::error!("Failed to close garage door: {}", e);
+                                log_publish_result(
+                                    "error",
+                                    mqtt.publish_error(format!("Close cmd error: {}", e)),
+                                );
+                            }
+                        }
                     }
                 }
             }

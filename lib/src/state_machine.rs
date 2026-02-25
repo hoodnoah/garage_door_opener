@@ -81,14 +81,12 @@ impl GDStateMachine {
             (GDState::SafetyStoppedWhileClosing, p) => match p {
                 DoorPosition::FullyOpen => self.state = GDState::Open,
                 DoorPosition::FullyClosed => self.state = GDState::Closed,
-                DoorPosition::Moving => self.state = GDState::Opening,
-                DoorPosition::Unknown => (),
+                _ => (),
             },
             (GDState::SafetyStoppedWhileOpening, p) => match p {
                 DoorPosition::FullyOpen => self.state = GDState::Open,
                 DoorPosition::FullyClosed => self.state = GDState::Closed,
-                DoorPosition::Moving => self.state = GDState::Closing,
-                DoorPosition::Unknown => (),
+                _ => (),
             },
         };
 
@@ -328,12 +326,12 @@ mod tests {
     }
 
     #[test]
-    fn stopped_closing_and_moving_is_opening() {
+    fn stopped_closing_and_moving_stays_stopped_closing() {
         let mut sm = new_with_state(GDState::SafetyStoppedWhileClosing);
 
         sm.update(DoorPosition::Moving);
 
-        assert_eq!(sm.state, GDState::Opening);
+        assert_eq!(sm.state, GDState::SafetyStoppedWhileClosing);
     }
 
     #[test]
@@ -373,12 +371,12 @@ mod tests {
     }
 
     #[test]
-    fn stopped_opening_and_moving_is_closing() {
+    fn stopped_opening_and_moving_stays_stopped_opening() {
         let mut sm = new_with_state(GDState::SafetyStoppedWhileOpening);
 
         sm.update(DoorPosition::Moving);
 
-        assert_eq!(sm.state, GDState::Closing);
+        assert_eq!(sm.state, GDState::SafetyStoppedWhileOpening);
     }
 
     #[test]

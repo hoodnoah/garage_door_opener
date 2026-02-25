@@ -8,6 +8,24 @@ use esp_idf_svc::{
     hal::gpio::{InputPin, OutputPin},
     sys::EspError,
 };
+use std::fmt;
+
+#[derive(Debug)]
+pub enum ControllerError {
+    InvalidState(GDState),
+    HardwareError(EspError),
+}
+
+impl fmt::Display for ControllerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ControllerError::InvalidState(state) => {
+                write!(f, "command not valid in current state: {}", state)
+            }
+            ControllerError::HardwareError(e) => write!(f, "hardware error: {}", e),
+        }
+    }
+}
 use lib::{
     state_machine::{DoorPosition, GDState},
     GDStateMachine,
@@ -105,18 +123,22 @@ where
     }
 
     // attempts to open the door, if state allows.
-    pub fn try_open(&mut self) -> Result<(), EspError> {
-        match self.state_machine.can_open() {
-            true => self.button.pulse_blocking(Self::BUTTON_PULSE_DURATION),
-            false => Ok(()),
+    pub fn try_open(&mut self) -> Result<(), ControllerError> {
+        if !self.state_machine.can_open() {
+            return Err(ControllerError::InvalidState(self.state_machine.state()));
         }
+        self.button
+            .pulse_blocking(Self::BUTTON_PULSE_DURATION)
+            .map_err(ControllerError::HardwareError)
     }
 
     // attempts to close the door, if state allows.
-    pub fn try_close(&mut self) -> Result<(), EspError> {
-        match self.state_machine.can_close() {
-            true => self.button.pulse_blocking(Self::BUTTON_PULSE_DURATION),
-            false => Ok(()),
+    pub fn try_close(&mut self) -> Result<(), ControllerError> {
+        if !self.state_machine.can_close() {
+            return Err(ControllerError::InvalidState(self.state_machine.state()));
         }
+        self.button
+            .pulse_blocking(Self::BUTTON_PULSE_DURATION)
+            .map_err(ControllerError::HardwareError)
     }
 }
