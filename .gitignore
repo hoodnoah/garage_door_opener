@@ -25,3 +25,4 @@ sdkconfig.old
 
 # env
 .env
+**/*.zip
