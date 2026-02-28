@@ -1,0 +1,214 @@
+(footprint "TE_284391-2"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at -0.32552 -5.14309 0)
+		(layer "F.SilkS")
+		(uuid "0102d052-dee7-47c7-b164-c63e2be4d4ca")
+		(effects
+			(font
+				(size 1.001575 1.001575)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "TE_284391-2"
+		(at 3.489525 5.071575 0)
+		(layer "F.Fab")
+		(uuid "a61ce413-b011-4e7f-bc3c-b2fd6ea67c6c")
+		(effects
+			(font
+				(size 1.001299 1.001299)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "1df30190-689b-421e-bb2c-aae070e31944")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "3fc8e6d8-b543-43d1-bde5-5e224a9ffe13")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr through_hole)
+	(fp_line
+		(start -3.5 -4.1)
+		(end 4 -4.1)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "d86f539d-740b-4f92-b3f4-e7de5c076eeb")
+	)
+	(fp_line
+		(start -3.5 4.1)
+		(end -3.5 -4.1)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "c73517ce-8c93-4b5c-be1e-e0c7f0811bf2")
+	)
+	(fp_line
+		(start 4 -4.1)
+		(end 4 4.1)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "d133ccd1-06f3-44a9-9f30-de650a40ec35")
+	)
+	(fp_line
+		(start 4 4.1)
+		(end -3.5 4.1)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "2ea3bb03-e933-4ff7-a3bf-6bed61f47863")
+	)
+	(fp_circle
+		(center -4.1 0)
+		(end -3.95 0)
+		(stroke
+			(width 0.3)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "97ac10e8-b331-4626-9ac5-2616d1aab279")
+	)
+	(fp_line
+		(start -3.75 -4.35)
+		(end 4.25 -4.35)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "3b7aac59-167f-4dbf-aeb9-225dd02a0366")
+	)
+	(fp_line
+		(start -3.75 4.35)
+		(end -3.75 -4.35)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "ba4e82e5-b1cf-47ec-8f57-32bb9542f8f8")
+	)
+	(fp_line
+		(start 4.25 -4.35)
+		(end 4.25 4.35)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "c433fd5c-b6fe-4236-97f4-40a322343d45")
+	)
+	(fp_line
+		(start 4.25 4.35)
+		(end -3.75 4.35)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "9536b61a-903c-4346-9ad6-015aaaef183b")
+	)
+	(fp_line
+		(start -3.5 -4.1)
+		(end 4 -4.1)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "5612575e-eb88-481a-bb9b-6f08695bdcb2")
+	)
+	(fp_line
+		(start -3.5 4.1)
+		(end -3.5 -4.1)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "c4d73d3e-871a-4f24-8c41-f85be1046f89")
+	)
+	(fp_line
+		(start 4 -4.1)
+		(end 4 4.1)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "9fdadc16-434c-4aa3-9193-91ac18500a03")
+	)
+	(fp_line
+		(start 4 4.1)
+		(end -3.5 4.1)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "4a6487d4-3b49-4bd0-97f6-2576d5eef477")
+	)
+	(pad "1" thru_hole rect
+		(at -1.75 0)
+		(size 1.65 1.65)
+		(drill 1.1)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0.102)
+		(uuid "6861f38c-2bee-403f-ba6d-296c6532ba5a")
+	)
+	(pad "2" thru_hole circle
+		(at 1.75 0)
+		(size 1.65 1.65)
+		(drill 1.1)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0.102)
+		(uuid "18f78d6b-e4f6-4f74-8b1b-f763792540b9")
+	)
+	(embedded_fonts no)
+	(model "/Users/noahhood/Documents/Repositories/garage_door_opener/kicad_libraries/284391-2/284391-2.step"
+		(offset
+			(xyz 0 -4.125 6.25)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz -90 -0 -0)
+		)
+	)
+)
