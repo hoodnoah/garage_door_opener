@@ -22,7 +22,7 @@ pub struct ReedSwitch<'a, T: InputPin + OutputPin> {
 }
 
 impl<'a, T: InputPin + OutputPin> ReedSwitch<'a, T> {
-    const DEBOUNCE_DELAY_US: u64 = 50_000;
+    const DEBOUNCE_DELAY_US: u64 = 500_000; // 500ms
 
     pub fn new(pin: T) -> Result<Self, EspError> {
         let mut pin_driver = PinDriver::input(pin)?;
