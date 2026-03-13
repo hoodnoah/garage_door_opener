@@ -49,12 +49,12 @@ fn main() -> anyhow::Result<()> {
 
     let peripherals = Peripherals::take().unwrap();
 
-    // Reed switches: GPIO0 = closed position, GPIO21 = open position
-    let closed_switch = ReedSwitch::new(peripherals.pins.gpio0)?;
-    let open_switch = ReedSwitch::new(peripherals.pins.gpio21)?;
+    // Reed switches: GPIO3 = closed position, GPIO1 = open position
+    let closed_switch = ReedSwitch::new(peripherals.pins.gpio3)?;
+    let open_switch = ReedSwitch::new(peripherals.pins.gpio1)?;
 
-    // Button: GPIO6 - pulses high to trigger the garage door opener
-    let button = Button::new(peripherals.pins.gpio6)?;
+    // Button: GPIO20 - pulses high to trigger the garage door opener
+    let button = Button::new(peripherals.pins.gpio20)?;
 
     // Garage door controller wraps both reed switches and the state machine
     let mut controller = GarageDoorController::new(open_switch, closed_switch, button)?;
@@ -78,6 +78,7 @@ fn main() -> anyhow::Result<()> {
     log_publish_result("state", mqtt.publish_state(initial_state));
 
     let mut wifi_connected = true;
+    let mut mqtt_connected = true;
     let mut loops_since_wifi_check = 0u32;
     let mut loops_since_status = 0u32;
 
@@ -101,6 +102,24 @@ fn main() -> anyhow::Result<()> {
             loops_since_wifi_check = 0;
         }
 
+        // --- MQTT health: resubscribe after broker reconnect ---
+        if mqtt.resubscribe_if_needed() {
+            let state = controller.state();
+            log_publish_result("state", mqtt.publish_state(state));
+            log_publish_result("status", mqtt.publish_status());
+            if let Ok(rssi) = wifi.rssi() {
+                log_publish_result("rssi", mqtt.publish_rssi(rssi));
+            }
+        }
+
+        let mqtt_now = mqtt.is_connected();
+        if mqtt_connected && !mqtt_now {
+            log::warn!("MQTT connection lost");
+        } else if !mqtt_connected && mqtt_now {
+            log::info!("MQTT connection restored");
+        }
+        mqtt_connected = mqtt_now;
+
         // --- Update door state machine ---
         let state_changed = controller.update();
         let state = controller.state();
@@ -113,6 +132,10 @@ fn main() -> anyhow::Result<()> {
         // --- Periodic status heartbeat ---
         if loops_since_status >= STATUS_PUBLISH_INTERVAL {
             log_publish_result("status", mqtt.publish_status());
+            log_publish_result("state", mqtt.publish_state(state));
+            if let Ok(rssi) = wifi.rssi() {
+                log_publish_result("rssi", mqtt.publish_rssi(rssi));
+            }
             loops_since_status = 0;
         }
 

@@ -1,5 +1,8 @@
 use std::{
-    sync::{mpsc, Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc, Arc,
+    },
     time::Duration,
 };
 
@@ -13,6 +16,7 @@ const STATE_TOPIC: &str = "basement_gdopener/state";
 const STATUS_TOPIC: &str = "basement_gdopener/status";
 const ERROR_TOPIC: &str = "basement_gdopener/error";
 const COMMAND_TOPIC: &str = "basement_gdopener/command";
+const RSSI_TOPIC: &str = "basement_gdopener/rssi";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +38,9 @@ impl GarageCommand {
 pub struct GDMQTT<'a> {
     client: EspMqttClient<'a>,
     command_rx: mpsc::Receiver<GarageCommand>,
+    connected: Arc<AtomicBool>,
+    needs_resubscribe: Arc<AtomicBool>,
+    connection_thread_dead: bool,
 }
 
 impl<'a> GDMQTT<'a> {
@@ -53,8 +60,10 @@ impl<'a> GDMQTT<'a> {
         };
 
         let (command_tx, command_rx) = mpsc::channel();
-        let connected = Arc::new(Mutex::new(false));
+        let connected = Arc::new(AtomicBool::new(false));
+        let needs_resubscribe = Arc::new(AtomicBool::new(false));
         let connected_flag = connected.clone();
+        let resubscribe_flag = needs_resubscribe.clone();
 
         let (mut client, mut connection) = EspMqttClient::new(mqtt_endpoint, &config)?;
 
@@ -65,9 +74,12 @@ impl<'a> GDMQTT<'a> {
                 match event.payload() {
                     EventPayload::Connected(_) => {
                         log::info!("MQTT connected");
-                        if let Ok(mut flag) = connected_flag.lock() {
-                            *flag = true;
-                        }
+                        connected_flag.store(true, Ordering::Relaxed);
+                        resubscribe_flag.store(true, Ordering::Relaxed);
+                    }
+                    EventPayload::Disconnected => {
+                        log::warn!("MQTT disconnected");
+                        connected_flag.store(false, Ordering::Relaxed);
                     }
                     EventPayload::Received { data, .. } => {
                         if let Some(cmd) = GarageCommand::from_bytes(data) {
@@ -82,12 +94,14 @@ impl<'a> GDMQTT<'a> {
                     _ => {}
                 }
             }
+            log::error!("MQTT connection thread exiting unexpectedly");
+            connected_flag.store(false, Ordering::Relaxed);
         });
 
         // Wait for the broker connection before returning.
         let deadline = std::time::Instant::now() + CONNECT_TIMEOUT;
         loop {
-            if *connected.lock().unwrap() {
+            if connected.load(Ordering::Relaxed) {
                 break;
             }
             if std::time::Instant::now() > deadline {
@@ -100,12 +114,52 @@ impl<'a> GDMQTT<'a> {
         }
 
         client.subscribe(COMMAND_TOPIC, QoS::AtLeastOnce)?;
+        needs_resubscribe.store(false, Ordering::Relaxed);
 
-        Ok(Self { client, command_rx })
+        Ok(Self {
+            client,
+            command_rx,
+            connected,
+            needs_resubscribe,
+            connection_thread_dead: false,
+        })
+    }
+
+    /// Re-subscribes to the command topic after an MQTT reconnect.
+    /// Returns true if a resubscription was performed.
+    pub fn resubscribe_if_needed(&mut self) -> bool {
+        if !self.needs_resubscribe.load(Ordering::Relaxed) {
+            return false;
+        }
+        match self.client.subscribe(COMMAND_TOPIC, QoS::AtLeastOnce) {
+            Ok(_) => {
+                log::info!("Resubscribed to {}", COMMAND_TOPIC);
+                self.needs_resubscribe.store(false, Ordering::Relaxed);
+                true
+            }
+            Err(e) => {
+                log::error!("Resubscribe failed: {:?}", e);
+                false
+            }
+        }
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.connected.load(Ordering::Relaxed)
     }
 
     pub fn take_command(&mut self) -> Option<GarageCommand> {
-        self.command_rx.try_recv().ok()
+        match self.command_rx.try_recv() {
+            Ok(cmd) => Some(cmd),
+            Err(mpsc::TryRecvError::Empty) => None,
+            Err(mpsc::TryRecvError::Disconnected) => {
+                if !self.connection_thread_dead {
+                    log::error!("MQTT connection thread has died");
+                    self.connection_thread_dead = true;
+                }
+                None
+            }
+        }
     }
 
     pub fn publish_state(&mut self, state: GDState) -> Result<u32, EspError> {
@@ -120,6 +174,15 @@ impl<'a> GDMQTT<'a> {
     pub fn publish_status(&mut self) -> Result<u32, EspError> {
         self.client
             .publish(STATUS_TOPIC, QoS::AtMostOnce, false, b"online")
+    }
+
+    pub fn publish_rssi(&mut self, rssi: i8) -> Result<u32, EspError> {
+        self.client.publish(
+            RSSI_TOPIC,
+            QoS::AtMostOnce,
+            false,
+            rssi.to_string().as_bytes(),
+        )
     }
 
     pub fn publish_error(&mut self, error_msg: String) -> Result<u32, EspError> {

@@ -2,7 +2,7 @@ use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     hal::{delay::FreeRtos, modem::Modem},
     nvs::EspDefaultNvsPartition,
-    sys::{esp, esp_wifi_set_max_tx_power, EspError},
+    sys::{esp, esp_wifi_sta_get_ap_info, wifi_ap_record_t, EspError},
     wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi},
 };
 
@@ -32,7 +32,7 @@ impl<'a> WifiHandler<'a> {
         // ESP32-C3 Super Mini v1 has a broken antenna design; reducing TX power
         // avoids signal reflections that corrupt frames and cause auth failures.
         // 34 = 8.5 dBm in quarter-dBm units.
-        esp!(unsafe { esp_wifi_set_max_tx_power(34) })?;
+        // esp!(unsafe { esp_wifi_set_max_tx_power(34) })?;
 
         Ok(Self { wifi })
     }
@@ -64,6 +64,12 @@ impl<'a> WifiHandler<'a> {
 
     pub fn is_connected(&self) -> Result<bool, EspError> {
         self.wifi.is_connected()
+    }
+
+    pub fn rssi(&self) -> Result<i8, EspError> {
+        let mut ap_info: wifi_ap_record_t = unsafe { std::mem::zeroed() };
+        esp!(unsafe { esp_wifi_sta_get_ap_info(&mut ap_info) })?;
+        Ok(ap_info.rssi)
     }
 
     pub fn ensure_connected(&mut self) -> Result<bool, EspError> {
