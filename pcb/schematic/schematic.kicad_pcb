@@ -1904,7 +1904,7 @@
 		(property "Reference" "SW2"
 			(at 0 -2.65 0)
 			(layer "F.SilkS")
-			(uuid "b0d5ffd4-1791-4742-81dd-28a43253406b")
+			(uuid "b7daa673-f89c-4541-baf7-a40eea49dcf3")
 			(effects
 				(font
 					(size 1 1)
@@ -1915,7 +1915,8 @@
 		(property "Value" "RESET_BTN"
 			(at 0 2.65 0)
 			(layer "F.Fab")
-			(uuid "344a2f70-9eed-43e3-8598-dd2226fb1497")
+			(hide yes)
+			(uuid "cc44fcdd-4cc7-4b63-86f3-96fd123ba0d5")
 			(effects
 				(font
 					(size 1 1)
@@ -1928,7 +1929,7 @@
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "cb0d424c-ef96-4615-9da6-7d0bf557eef8")
+			(uuid "e824df1e-5f9e-4932-af17-f05a34644737")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1941,7 +1942,7 @@
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "ed52da82-4f22-4a22-8af1-a3ff5efa8529")
+			(uuid "62207904-53d7-47f0-a70d-b49b57d231b9")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2725,13 +2726,13 @@
 	(footprint "Button_Switch_SMD:SW_SPST_TS-1088-xR025"
 		(layer "F.Cu")
 		(uuid "7851e0ff-69a6-411b-a0ea-573177a47bb7")
-		(at 107.48 109.4)
+		(at 107.478571 109.4)
 		(descr "SMD Tactile Switch, 3.9x3x2.5 mm, https://lcsc.com/datasheet/lcsc_datasheet_2504101957_XUNPU-TS-1088-AR02016_C720477.pdf")
 		(tags "Tactile Switch")
 		(property "Reference" "SW1"
 			(at 0 -2.65 0)
 			(layer "F.SilkS")
-			(uuid "53e610de-67e2-4650-96a9-6682e21ab1b1")
+			(uuid "d1de286f-1fff-4e2b-95e3-e0620150e80b")
 			(effects
 				(font
 					(size 1 1)
@@ -2742,7 +2743,8 @@
 		(property "Value" "BOOT_BTN"
 			(at 0 2.65 0)
 			(layer "F.Fab")
-			(uuid "1f2acb2f-1a20-4568-8bfb-0fc15823251f")
+			(hide yes)
+			(uuid "9e9c7818-057b-4ff8-b2d7-256558ec0e39")
 			(effects
 				(font
 					(size 1 1)
@@ -2755,7 +2757,7 @@
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "10cde407-7dbb-405e-9dbd-384de1bf546f")
+			(uuid "9f7e9e87-3bf4-4523-84c4-9f0c2943ef52")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2768,7 +2770,7 @@
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "ff75a4ed-a1b3-458e-9e8d-73955ce7f94a")
+			(uuid "e14f268a-fc75-4a62-b3be-54ba8545c93f")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8645,6 +8647,30 @@
 		(fill no)
 		(layer "Edge.Cuts")
 		(uuid "a73b3ca7-8c68-4544-9fa3-9c753951da65")
+	)
+	(gr_text "BOOT"
+		(at 105.5 113 0)
+		(layer "F.SilkS")
+		(uuid "02845a06-d274-4fa6-99e4-e63dcc41017b")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.1)
+			)
+			(justify left bottom)
+		)
+	)
+	(gr_text "RESET"
+		(at 105.168095 102.5 0)
+		(layer "F.SilkS")
+		(uuid "25f4df91-bf17-4654-86dc-c10bfdce2f37")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.1)
+			)
+			(justify left bottom)
+		)
 	)
 	(gr_text "-5V"
 		(at 126.5 126 0)
