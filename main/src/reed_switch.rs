@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use esp_idf_svc::{
-    hal::gpio::{Input, InputPin, OutputPin, PinDriver, Pull},
+    hal::gpio::{AnyIOPin, Input, PinDriver, Pull},
     sys::EspError,
 };
 
@@ -11,17 +11,17 @@ pub enum SwitchState {
     CircuitClosed,
 }
 
-pub struct ReedSwitch<'a, T: InputPin + OutputPin> {
-    pin: PinDriver<'a, T, Input>,
+pub struct ReedSwitch<'a> {
+    pin: PinDriver<'a, AnyIOPin, Input>,
     state: SwitchState,
     last_raw: SwitchState,
     last_edge: Instant,
 }
 
-impl<'a, T: InputPin + OutputPin> ReedSwitch<'a, T> {
+impl<'a> ReedSwitch<'a> {
     const DEBOUNCE_DELAY_US: u64 = 150_000; // 150ms
 
-    pub fn new(pin: T) -> Result<Self, EspError> {
+    pub fn new(pin: AnyIOPin) -> Result<Self, EspError> {
         let mut pin_driver = PinDriver::input(pin)?;
         pin_driver.set_pull(Pull::Up)?;
 

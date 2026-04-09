@@ -4,10 +4,7 @@ use crate::{
     button::Button,
     reed_switch::{ReedSwitch, SwitchState},
 };
-use esp_idf_svc::{
-    hal::gpio::{InputPin, OutputPin},
-    sys::EspError,
-};
+use esp_idf_svc::sys::EspError;
 use std::fmt;
 
 #[derive(Debug)]
@@ -31,32 +28,22 @@ use lib::{
     GDStateMachine,
 };
 
-pub struct GarageDoorController<'a, T1, T2, T3>
-where
-    T1: InputPin + OutputPin,
-    T2: InputPin + OutputPin,
-    T3: InputPin + OutputPin,
-{
-    open_switch: ReedSwitch<'a, T1>,
-    closed_switch: ReedSwitch<'a, T2>,
-    button: Button<'a, T3>,
+pub struct GarageDoorController<'a> {
+    open_switch: ReedSwitch<'a>,
+    closed_switch: ReedSwitch<'a>,
+    button: Button<'a>,
     state_machine: GDStateMachine,
     last_state_change: Instant,
 }
 
-impl<'a, T1, T2, T3> GarageDoorController<'a, T1, T2, T3>
-where
-    T1: InputPin + OutputPin,
-    T2: InputPin + OutputPin,
-    T3: InputPin + OutputPin,
-{
+impl<'a> GarageDoorController<'a> {
     const TRANSITION_TIMEOUT_SECONDS: u64 = 20;
     const BUTTON_PULSE_DURATION: Duration = Duration::from_millis(500);
 
     pub fn new(
-        open_switch: ReedSwitch<'a, T1>,
-        closed_switch: ReedSwitch<'a, T2>,
-        button: Button<'a, T3>,
+        open_switch: ReedSwitch<'a>,
+        closed_switch: ReedSwitch<'a>,
+        button: Button<'a>,
     ) -> Result<Self, EspError> {
         Ok(Self {
             open_switch,

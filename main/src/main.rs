@@ -39,11 +39,11 @@ fn main() -> anyhow::Result<()> {
     let peripherals = Peripherals::take().unwrap();
 
     // Reed switches: GPIO3 = closed position, GPIO1 = open position
-    let closed_switch = ReedSwitch::new(peripherals.pins.gpio3)?;
-    let open_switch = ReedSwitch::new(peripherals.pins.gpio1)?;
+    let closed_switch = ReedSwitch::new(peripherals.pins.gpio3.downgrade())?;
+    let open_switch = ReedSwitch::new(peripherals.pins.gpio1.downgrade())?;
 
     // Button: GPIO20 - pulses high to trigger the garage door opener
-    let button = Button::new(peripherals.pins.gpio20)?;
+    let button = Button::new(peripherals.pins.gpio20.downgrade())?;
 
     // Garage door controller wraps both reed switches and the state machine
     let mut controller = GarageDoorController::new(open_switch, closed_switch, button)?;
