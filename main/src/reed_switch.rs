@@ -9,7 +9,6 @@ use esp_idf_svc::{
 pub enum SwitchState {
     CircuitOpen,
     CircuitClosed,
-    Uninitialized,
 }
 
 pub struct ReedSwitch<'a, T: InputPin + OutputPin> {
@@ -26,13 +25,17 @@ impl<'a, T: InputPin + OutputPin> ReedSwitch<'a, T> {
         let mut pin_driver = PinDriver::input(pin)?;
         pin_driver.set_pull(Pull::Up)?;
 
-        let now = Instant::now();
+        let initial = if pin_driver.is_low() {
+            SwitchState::CircuitClosed
+        } else {
+            SwitchState::CircuitOpen
+        };
 
         Ok(Self {
             pin: pin_driver,
-            state: SwitchState::Uninitialized,
-            last_raw: SwitchState::Uninitialized,
-            last_edge: now,
+            state: initial,
+            last_raw: initial,
+            last_edge: Instant::now(),
         })
     }
 

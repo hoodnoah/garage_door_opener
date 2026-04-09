@@ -74,8 +74,7 @@ where
             (CircuitClosed, CircuitOpen) => DoorPosition::FullyOpen,
             (CircuitOpen, CircuitClosed) => DoorPosition::FullyClosed,
             (CircuitOpen, CircuitOpen) => DoorPosition::Moving,
-            (CircuitClosed, CircuitClosed) => DoorPosition::Unknown, // undefined; both switches closed¿
-            _ => DoorPosition::Unknown,                              // cannot be inferred
+            (CircuitClosed, CircuitClosed) => DoorPosition::Unknown, // hardware fault; both switches closed
         }
     }
 
