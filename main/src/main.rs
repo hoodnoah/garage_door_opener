@@ -6,7 +6,7 @@ mod wifi;
 
 use button::Button;
 use esp_idf_svc::{
-    hal::{delay::FreeRtos, peripherals::Peripherals},
+    hal::{delay::FreeRtos, gpio::IOPin, peripherals::Peripherals},
     sys::EspError,
 };
 use garage_door_controller::{ControllerError, GarageDoorController};
