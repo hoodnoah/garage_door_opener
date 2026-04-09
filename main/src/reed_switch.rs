@@ -15,8 +15,6 @@ pub enum SwitchState {
 pub struct ReedSwitch<'a, T: InputPin + OutputPin> {
     pin: PinDriver<'a, T, Input>,
     state: SwitchState,
-    prev_state: Option<SwitchState>,
-    last_changed: Instant,
     last_raw: SwitchState,
     last_edge: Instant,
 }
@@ -33,8 +31,6 @@ impl<'a, T: InputPin + OutputPin> ReedSwitch<'a, T> {
         Ok(Self {
             pin: pin_driver,
             state: SwitchState::Uninitialized,
-            prev_state: None,
-            last_changed: now,
             last_raw: SwitchState::Uninitialized,
             last_edge: now,
         })
@@ -66,9 +62,7 @@ impl<'a, T: InputPin + OutputPin> ReedSwitch<'a, T> {
         if self.last_raw != self.state
             && stable_elapsed > Duration::from_micros(Self::DEBOUNCE_DELAY_US)
         {
-            self.prev_state = Some(self.state);
             self.state = self.last_raw;
-            self.last_changed = read_time;
             true
         } else {
             false

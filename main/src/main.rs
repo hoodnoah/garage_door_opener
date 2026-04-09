@@ -48,10 +48,16 @@ fn main() -> anyhow::Result<()> {
     // Garage door controller wraps both reed switches and the state machine
     let mut controller = GarageDoorController::new(open_switch, closed_switch, button)?;
 
-    // WiFi
+    // WiFi — retry indefinitely so a slow-booting router after a power outage
+    // doesn't permanently kill the app (same failure mode as the MQTT timeout).
     log::info!("Connecting to WiFi SSID: {}", WIFI_SSID);
     let mut wifi = WifiHandler::new(peripherals.modem, WIFI_SSID, WIFI_PASSWORD)?;
-    wifi.connect()?;
+    loop {
+        match wifi.connect() {
+            Ok(_) => break,
+            Err(e) => log::warn!("WiFi connect failed: {:?}, retrying...", e),
+        }
+    }
     log::info!("WiFi connected");
 
     // MQTT
