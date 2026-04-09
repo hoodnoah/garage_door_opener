@@ -17,7 +17,6 @@ const STATUS_TOPIC: &str = "basement_gdopener/status";
 const ERROR_TOPIC: &str = "basement_gdopener/error";
 const COMMAND_TOPIC: &str = "basement_gdopener/command";
 const RSSI_TOPIC: &str = "basement_gdopener/rssi";
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GarageCommand {
@@ -65,7 +64,7 @@ impl<'a> GDMQTT<'a> {
         let connected_flag = connected.clone();
         let resubscribe_flag = needs_resubscribe.clone();
 
-        let (mut client, mut connection) = EspMqttClient::new(mqtt_endpoint, &config)?;
+        let (client, mut connection) = EspMqttClient::new(mqtt_endpoint, &config)?;
 
         // The connection thread drives the MQTT state machine; it must be
         // running before we can subscribe or publish.
@@ -98,24 +97,11 @@ impl<'a> GDMQTT<'a> {
             connected_flag.store(false, Ordering::Relaxed);
         });
 
-        // Wait for the broker connection before returning.
-        let deadline = std::time::Instant::now() + CONNECT_TIMEOUT;
-        loop {
-            if connected.load(Ordering::Relaxed) {
-                break;
-            }
-            if std::time::Instant::now() > deadline {
-                log::error!("MQTT connection timed out");
-                return Err(EspError::from_infallible::<
-                    { esp_idf_svc::sys::ESP_ERR_TIMEOUT },
-                >());
-            }
-            std::thread::sleep(Duration::from_millis(100));
-        }
-
-        client.subscribe(COMMAND_TOPIC, QoS::AtLeastOnce)?;
-        needs_resubscribe.store(false, Ordering::Relaxed);
-
+        // Return immediately — the underlying MQTT client handles reconnection
+        // automatically (reconnect_timeout). The first Connected event will set
+        // needs_resubscribe, and the main loop's resubscribe_if_needed() will
+        // subscribe and publish state exactly as it does after any reconnect.
+        // This avoids a hard failure if the broker isn't up at boot time.
         Ok(Self {
             client,
             command_rx,

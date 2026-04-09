@@ -20,15 +20,11 @@ const MQTT_ENDPOINT: &str = env!("MQTT_ENDPOINT");
 const MQTT_USER: &str = env!("MQTT_USER");
 const MQTT_PASS: &str = env!("MQTT_PASS");
 
-// GPIO pin assignments
-const PIN_CLOSED_SWITCH: u32 = 0; // GPIO0  - "closed" reed switch
-const PIN_OPEN_SWITCH: u32 = 21; //  GPIO21 - "open" reed switch
-const PIN_BUTTON: u32 = 6; //        GPIO6  - garage door button
-
 const LOOP_DELAY_MS: u32 = 100;
 const WIFI_CHECK_INTERVAL: u32 = 50; // ~5 s
 const STATUS_PUBLISH_INTERVAL: u32 = 600; // ~10 s
 
+// Helper; log the result of an MQTT publish
 fn log_publish_result(name: &str, result: Result<u32, EspError>) {
     match result {
         Ok(_) => log::info!("Published {}", name),
@@ -39,13 +35,6 @@ fn log_publish_result(name: &str, result: Result<u32, EspError>) {
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
-
-    log::info!(
-        "Garage door opener starting (closed=GPIO{}, open=GPIO{}, button=GPIO{})",
-        PIN_CLOSED_SWITCH,
-        PIN_OPEN_SWITCH,
-        PIN_BUTTON,
-    );
 
     let peripherals = Peripherals::take().unwrap();
 
@@ -81,8 +70,6 @@ fn main() -> anyhow::Result<()> {
     let mut mqtt_connected = true;
     let mut loops_since_wifi_check = 0u32;
     let mut loops_since_status = 0u32;
-
-    log::info!("Entering main loop");
 
     loop {
         // --- Periodic WiFi health check ---
