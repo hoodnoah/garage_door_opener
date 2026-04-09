@@ -490,9 +490,9 @@
       "plot": "/Users/noahhood/Documents/Repositories/garage_door_opener/gerber/",
       "pos_files": "/Users/noahhood/Documents/Repositories/garage_door_opener/placement/",
       "specctra_dsn": "",
-      "step": "",
+      "step": "../../../../../Desktop/gdopener_3d.ply",
       "svg": "",
-      "vrml": ""
+      "vrml": "../../../../../Desktop/schematic.wrl"
     },
     "page_layout_descr_file": ""
   },

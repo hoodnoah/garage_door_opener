@@ -697,7 +697,7 @@
 				(xyz 0 0 0)
 			)
 		)
-		(model "/Users/noahhood/Documents/Repositories/garage_door_opener/kicad_libraries/TYPE-C-31-M-12/TYPE-C-31-M-12--3DModel-STEP-56544.STEP"
+		(model "/Users/noahhood/Documents/Repositories/garage_door_opener/pcb/kicad_libraries/TYPE-C-31-M-12/TYPE-C-31-M-12--3DModel-STEP-56544.STEP"
 			(offset
 				(xyz 0 -1.125 0)
 			)
@@ -1571,7 +1571,7 @@
 			(uuid "189c1821-2e8d-4523-a2ba-3b42067bce4a")
 		)
 		(embedded_fonts no)
-		(model "/Users/noahhood/Documents/Repositories/garage_door_opener/kicad_libraries/284391-2/284391-2.step"
+		(model "/Users/noahhood/Documents/Repositories/garage_door_opener/pcb/kicad_libraries/284391-2/284391-2.step"
 			(offset
 				(xyz 0 -4.125 6.25)
 			)
@@ -2711,7 +2711,7 @@
 			(uuid "bc88b8e3-01b2-443e-aa19-da9f53614784")
 		)
 		(embedded_fonts no)
-		(model "/Users/noahhood/Documents/Repositories/garage_door_opener/kicad_libraries/284391-2/284391-2.step"
+		(model "/Users/noahhood/Documents/Repositories/garage_door_opener/pcb/kicad_libraries/284391-2/284391-2.step"
 			(offset
 				(xyz 0 -4.125 6.25)
 			)
@@ -3992,7 +3992,7 @@
 			(uuid "8d32fed4-373f-4ecd-ac92-018ff58f089e")
 		)
 		(embedded_fonts no)
-		(model "/Users/noahhood/Documents/Repositories/garage_door_opener/kicad_libraries/284391-2/284391-2.step"
+		(model "/Users/noahhood/Documents/Repositories/garage_door_opener/pcb/kicad_libraries/284391-2/284391-2.step"
 			(offset
 				(xyz 0 -4.125 6.25)
 			)
@@ -8469,7 +8469,7 @@
 			(uuid "d93e6782-58d4-4356-af3b-24e76161ba43")
 		)
 		(embedded_fonts no)
-		(model "/Users/noahhood/Documents/Repositories/garage_door_opener/kicad_libraries/284391-2/284391-2.step"
+		(model "/Users/noahhood/Documents/Repositories/garage_door_opener/pcb/kicad_libraries/284391-2/284391-2.step"
 			(offset
 				(xyz 0 -4.125 6.25)
 			)
