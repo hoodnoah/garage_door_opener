@@ -89,9 +89,21 @@ impl<'a> ConnectionsHandler<'a> {
     pub fn wifi_connect(&mut self, modem: Modem) -> Result<(), ConnectionError> {
         let mut wifi = WifiHandler::new(modem, &self.wifi_vars.ssid, &self.wifi_vars.password)
             .map_err(ConnectionError::Wifi)?;
-        wifi.connect().map_err(ConnectionError::Wifi)?;
+        let result = wifi.connect().map_err(ConnectionError::Wifi);
         self.wifi_handler = Some(wifi);
-        Ok(())
+        result
+    }
+
+    pub fn has_wifi_handler(&self) -> bool {
+        self.wifi_handler.is_some()
+    }
+
+    pub fn wifi_reconnect(&mut self) -> Result<(), ConnectionError> {
+        let wifi = self
+            .wifi_handler
+            .as_mut()
+            .ok_or(ConnectionError::WifiRequired)?;
+        wifi.connect().map_err(ConnectionError::Wifi)
     }
 
     pub fn wifi_is_connected(&self) -> bool {
@@ -183,5 +195,11 @@ impl<'a> ConnectionsHandler<'a> {
 
     pub fn is_healthy(&self) -> bool {
         self.mqtt_is_connected()
+    }
+
+    pub fn mqtt_publish_error(&mut self, msg: String) {
+        if let Some(m) = self.mqtt_handler.as_mut() {
+            let _ = m.publish_error(msg);
+        }
     }
 }
