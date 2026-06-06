@@ -1,4 +1,5 @@
 mod button;
+mod connections_handler;
 mod garage_door_controller;
 mod mqtt;
 mod reed_switch;

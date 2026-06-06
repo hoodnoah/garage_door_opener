@@ -72,21 +72,14 @@ impl<'a> WifiHandler<'a> {
         Ok(ap_info.rssi)
     }
 
-    pub fn ensure_connected(&mut self) -> Result<bool, EspError> {
+    pub fn ensure_connected(&mut self) -> Result<(), EspError> {
         if !self.is_connected()? {
-            log::warn!("WiFi disconnected, attempting reconnection...");
             match self.connect() {
-                Ok(_) => {
-                    log::info!("WiFi reconnected successfully");
-                    Ok(true)
-                }
-                Err(e) => {
-                    log::error!("WiFi reconnection failed: {:?}", e);
-                    Err(e)
-                }
+                Ok(_) => Ok(()),
+                Err(e) => Err(e),
             }
         } else {
-            Ok(true)
+            Ok(())
         }
     }
 }
