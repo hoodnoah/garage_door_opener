@@ -26,9 +26,10 @@ const MQTT_USER: &str = env!("MQTT_USER");
 const MQTT_PASS: &str = env!("MQTT_PASS");
 
 const LOOP_DELAY_MS: u32 = 100;
-const WIFI_CHECK_INTERVAL_SECONDS: u64 = 5;
-const STATUS_PUBLISH_INTERVAL_SECONDS: u64 = 60;
-const MQTT_FAIL_THRESHOLD_MINUTES: u64 = 5;
+const WIFI_CHECK_INTERVAL: Duration = Duration::from_secs(5);
+const WIFI_RETRY_INTERVAL_MS: u32 = 10_000;
+const STATUS_PUBLISH_INTERVAL: Duration = Duration::from_secs(60);
+const REBOOT_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
@@ -50,13 +51,13 @@ fn main() -> anyhow::Result<()> {
     let wifi_vars = WifiVars::new(
         WIFI_SSID.to_string(),
         WIFI_PASSWORD.to_string(),
-        Duration::from_secs(WIFI_CHECK_INTERVAL_SECONDS),
+        WIFI_CHECK_INTERVAL,
     );
     let mqtt_vars = MqttVars::new(
         MQTT_ENDPOINT.to_string(),
         MQTT_USER.to_string(),
         MQTT_PASS.to_string(),
-        Duration::from_mins(STATUS_PUBLISH_INTERVAL_SECONDS),
+        STATUS_PUBLISH_INTERVAL,
     );
     let mut connections_handler = ConnectionsHandler::new(wifi_vars, mqtt_vars);
 
@@ -68,7 +69,10 @@ fn main() -> anyhow::Result<()> {
             // retry if wifi_handler new worked
             match connections_handler.wifi_reconnect() {
                 Ok(_) => break,
-                Err(e) => log::warn!("WiFi retrying: {:?}", e),
+                Err(e) => {
+                    log::warn!("WiFi retrying: {:?}", e);
+                    FreeRtos::delay_ms(WIFI_RETRY_INTERVAL_MS);
+                }
             }
         },
         Err(e) => {
@@ -89,7 +93,6 @@ fn main() -> anyhow::Result<()> {
     log::info!("MQTT ready");
 
     let mut last_ok = EspSystemTime {}.now();
-    let reboot_timeout = Duration::from_secs(MQTT_FAIL_THRESHOLD_MINUTES);
 
     loop {
         // --- Update door state machine ---
@@ -137,7 +140,7 @@ fn main() -> anyhow::Result<()> {
 
         if connections_handler.is_healthy() {
             last_ok = EspSystemTime {}.now();
-        } else if (EspSystemTime {}.now() - last_ok) >= reboot_timeout {
+        } else if (EspSystemTime {}.now() - last_ok) >= REBOOT_TIMEOUT {
             log::error!("Connectivity dead too long; restarting");
             esp_idf_svc::hal::reset::restart();
         }

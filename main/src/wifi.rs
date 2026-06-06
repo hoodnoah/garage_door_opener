@@ -1,6 +1,6 @@
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
-    hal::{delay::FreeRtos, modem::Modem},
+    hal::modem::Modem,
     nvs::EspDefaultNvsPartition,
     sys::{esp, esp_wifi_sta_get_ap_info, wifi_ap_record_t, EspError},
     wifi::{AuthMethod, BlockingWifi, ClientConfiguration, Configuration, EspWifi},
@@ -38,28 +38,9 @@ impl<'a> WifiHandler<'a> {
     }
 
     pub fn connect(&mut self) -> Result<(), EspError> {
-        const MAX_RETRIES: u32 = 5;
-        const RETRY_DELAY_MS: u32 = 2_000;
-
-        for attempt in 1..=MAX_RETRIES {
-            match self.wifi.connect() {
-                Ok(_) => {
-                    self.wifi.wait_netif_up()?;
-                    return Ok(());
-                }
-                Err(e) if attempt < MAX_RETRIES => {
-                    log::warn!(
-                        "WiFi connect attempt {}/{} failed: {:?}, retrying...",
-                        attempt,
-                        MAX_RETRIES,
-                        e
-                    );
-                    FreeRtos::delay_ms(RETRY_DELAY_MS);
-                }
-                Err(e) => return Err(e),
-            }
-        }
-        unreachable!()
+        self.wifi.connect()?;
+        self.wifi.wait_netif_up()?;
+        Ok(())
     }
 
     pub fn is_connected(&self) -> Result<bool, EspError> {
