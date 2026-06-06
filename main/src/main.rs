@@ -23,6 +23,7 @@ const MQTT_PASS: &str = env!("MQTT_PASS");
 const LOOP_DELAY_MS: u32 = 100;
 const WIFI_CHECK_INTERVAL: u32 = 50; // ~5 s
 const STATUS_PUBLISH_INTERVAL: u32 = 600; // ~10 s
+const MQTT_FAIL_THRESHOLD_LOOPS: u32 = 1500; // 2m30s @ 100ms
 
 // Helper; log the result of an MQTT publish
 fn log_publish_result(name: &str, result: Result<u32, EspError>) {
@@ -76,6 +77,7 @@ fn main() -> anyhow::Result<()> {
     let mut mqtt_connected = true;
     let mut loops_since_wifi_check = 0u32;
     let mut loops_since_status = 0u32;
+    let mut loops_since_mqtt_ok = 0u32;
 
     loop {
         // --- Periodic WiFi health check ---
@@ -112,6 +114,16 @@ fn main() -> anyhow::Result<()> {
             log::info!("MQTT connection restored");
         }
         mqtt_connected = mqtt_now;
+
+        if mqtt_now {
+            loops_since_mqtt_ok = 0;
+        } else {
+            loops_since_mqtt_ok += 1;
+            if loops_since_mqtt_ok >= MQTT_FAIL_THRESHOLD_LOOPS {
+                log::error!("MQTT dead too long; rebooting MCU");
+                esp_idf_svc::hal::reset::restart();
+            }
+        }
 
         // --- Update door state machine ---
         let state_changed = controller.update();
