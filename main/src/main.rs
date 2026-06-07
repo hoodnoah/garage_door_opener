@@ -1,18 +1,23 @@
 mod button;
+mod connections_handler;
 mod garage_door_controller;
 mod mqtt;
 mod reed_switch;
 mod wifi;
 
+use std::time::Duration;
+
 use button::Button;
+use connections_handler::{MqttVars, WifiVars};
 use esp_idf_svc::{
     hal::{delay::FreeRtos, gpio::IOPin, peripherals::Peripherals},
-    sys::EspError,
+    systime::EspSystemTime,
 };
 use garage_door_controller::{ControllerError, GarageDoorController};
-use mqtt::{GarageCommand, GDMQTT};
+use mqtt::GarageCommand;
 use reed_switch::ReedSwitch;
-use wifi::WifiHandler;
+
+use crate::connections_handler::ConnectionsHandler;
 
 const WIFI_SSID: &str = env!("WIFI_SSID");
 const WIFI_PASSWORD: &str = env!("WIFI_PASSWORD");
@@ -21,16 +26,10 @@ const MQTT_USER: &str = env!("MQTT_USER");
 const MQTT_PASS: &str = env!("MQTT_PASS");
 
 const LOOP_DELAY_MS: u32 = 100;
-const WIFI_CHECK_INTERVAL: u32 = 50; // ~5 s
-const STATUS_PUBLISH_INTERVAL: u32 = 600; // ~10 s
-
-// Helper; log the result of an MQTT publish
-fn log_publish_result(name: &str, result: Result<u32, EspError>) {
-    match result {
-        Ok(_) => log::info!("Published {}", name),
-        Err(e) => log::warn!("Failed to publish {}: {:?}", name, e),
-    }
-}
+const WIFI_CHECK_INTERVAL: Duration = Duration::from_secs(5);
+const WIFI_RETRY_INTERVAL_MS: u32 = 10_000;
+const STATUS_PUBLISH_INTERVAL: Duration = Duration::from_secs(60);
+const REBOOT_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
@@ -46,125 +45,92 @@ fn main() -> anyhow::Result<()> {
     let button = Button::new(peripherals.pins.gpio20.downgrade())?;
 
     // Garage door controller wraps both reed switches and the state machine
-    let mut controller = GarageDoorController::new(open_switch, closed_switch, button)?;
+    let mut door_controller = GarageDoorController::new(open_switch, closed_switch, button)?;
+
+    // Connections controller
+    let wifi_vars = WifiVars::new(
+        WIFI_SSID.to_string(),
+        WIFI_PASSWORD.to_string(),
+        WIFI_CHECK_INTERVAL,
+    );
+    let mqtt_vars = MqttVars::new(
+        MQTT_ENDPOINT.to_string(),
+        MQTT_USER.to_string(),
+        MQTT_PASS.to_string(),
+        STATUS_PUBLISH_INTERVAL,
+    );
+    let mut connections_handler = ConnectionsHandler::new(wifi_vars, mqtt_vars);
 
     // WiFi — retry indefinitely so a slow-booting router after a power outage
-    // doesn't permanently kill the app (same failure mode as the MQTT timeout).
-    log::info!("Connecting to WiFi SSID: {}", WIFI_SSID);
-    let mut wifi = WifiHandler::new(peripherals.modem, WIFI_SSID, WIFI_PASSWORD)?;
-    loop {
-        match wifi.connect() {
-            Ok(_) => break,
-            Err(e) => log::warn!("WiFi connect failed: {:?}, retrying...", e),
+    // doesn't kill the whole app permanently
+    match connections_handler.wifi_connect(peripherals.modem) {
+        Ok(_) => {}
+        Err(_) if connections_handler.has_wifi_handler() => loop {
+            // retry if wifi_handler new worked
+            match connections_handler.wifi_reconnect() {
+                Ok(_) => break,
+                Err(e) => {
+                    log::warn!("WiFi retrying: {:?}", e);
+                    FreeRtos::delay_ms(WIFI_RETRY_INTERVAL_MS);
+                }
+            }
+        },
+        Err(e) => {
+            // new() itself failed, modem is gone. Needs reboot.
+            log::error!("WiFi init failed unrecoverably: {:?}; restarting", e);
+            esp_idf_svc::hal::reset::restart();
         }
     }
-    log::info!("WiFi connected");
 
     // MQTT
     log::info!("Connecting to MQTT: {}", MQTT_ENDPOINT);
-    let mut mqtt = GDMQTT::new("basement_gdopener", MQTT_ENDPOINT, MQTT_USER, MQTT_PASS)?;
-    log_publish_result("status", mqtt.publish_status());
+    loop {
+        match connections_handler.mqtt_connect() {
+            Ok(_) => break,
+            Err(e) => log::warn!("MQTT connect failed: {:?}, retrying...", e),
+        }
+    }
     log::info!("MQTT ready");
 
-    // Publish initial door state (state_changed won't fire if door starts Unknown)
-    controller.update();
-    let initial_state = controller.state();
-    log::info!("Initial door state: {:?}", initial_state);
-    log_publish_result("state", mqtt.publish_state(initial_state));
-
-    let mut wifi_connected = true;
-    let mut mqtt_connected = true;
-    let mut loops_since_wifi_check = 0u32;
-    let mut loops_since_status = 0u32;
+    let mut last_ok = EspSystemTime {}.now();
 
     loop {
-        // --- Periodic WiFi health check ---
-        if loops_since_wifi_check >= WIFI_CHECK_INTERVAL {
-            match wifi.ensure_connected() {
-                Ok(_) => {
-                    if !wifi_connected {
-                        log::info!("WiFi connection restored");
-                    }
-                    wifi_connected = true;
-                }
-                Err(e) => {
-                    log::error!("WiFi check failed: {:?}", e);
-                    wifi_connected = false;
-                }
-            }
-            loops_since_wifi_check = 0;
-        }
-
-        // --- MQTT health: resubscribe after broker reconnect ---
-        if mqtt.resubscribe_if_needed() {
-            let state = controller.state();
-            log_publish_result("state", mqtt.publish_state(state));
-            log_publish_result("status", mqtt.publish_status());
-            if let Ok(rssi) = wifi.rssi() {
-                log_publish_result("rssi", mqtt.publish_rssi(rssi));
-            }
-        }
-
-        let mqtt_now = mqtt.is_connected();
-        if mqtt_connected && !mqtt_now {
-            log::warn!("MQTT connection lost");
-        } else if !mqtt_connected && mqtt_now {
-            log::info!("MQTT connection restored");
-        }
-        mqtt_connected = mqtt_now;
-
         // --- Update door state machine ---
-        let state_changed = controller.update();
-        let state = controller.state();
+        let state_changed = door_controller.update();
+        let door_state = door_controller.state();
 
-        if state_changed {
-            log::info!("Door state -> {:?}", state);
-            log_publish_result("state", mqtt.publish_state(state));
-        }
-
-        // --- Periodic status heartbeat ---
-        if loops_since_status >= STATUS_PUBLISH_INTERVAL {
-            log_publish_result("status", mqtt.publish_status());
-            log_publish_result("state", mqtt.publish_state(state));
-            if let Ok(rssi) = wifi.rssi() {
-                log_publish_result("rssi", mqtt.publish_rssi(rssi));
-            }
-            loops_since_status = 0;
-        }
-
-        // --- Handle incoming commands ---
-        if let Some(cmd) = mqtt.take_command() {
-            log::info!("Received command: {:?} (current state: {:?})", cmd, state);
+        if let Some(cmd) = connections_handler.tick(door_state, state_changed) {
+            log::info!(
+                "Received command: {:?} (current state: {:?})",
+                cmd,
+                door_state
+            );
 
             match cmd {
                 GarageCommand::Open => {
-                    if let Err(e) = controller.try_open() {
+                    if let Err(e) = door_controller.try_open() {
                         match &e {
                             ControllerError::InvalidState(s) => {
                                 log::warn!("Open ignored: door is {}", s)
                             }
                             ControllerError::HardwareError(_) => {
                                 log::error!("Failed to open garage door: {}", e);
-                                log_publish_result(
-                                    "error",
-                                    mqtt.publish_error(format!("Open cmd error: {}", e)),
-                                );
+                                connections_handler
+                                    .mqtt_publish_error(format!("Open cmd error: {}", e));
                             }
                         }
                     }
                 }
                 GarageCommand::Close => {
-                    if let Err(e) = controller.try_close() {
+                    if let Err(e) = door_controller.try_close() {
                         match &e {
                             ControllerError::InvalidState(s) => {
                                 log::warn!("Close ignored: door is {}", s)
                             }
                             ControllerError::HardwareError(_) => {
                                 log::error!("Failed to close garage door: {}", e);
-                                log_publish_result(
-                                    "error",
-                                    mqtt.publish_error(format!("Close cmd error: {}", e)),
-                                );
+                                connections_handler
+                                    .mqtt_publish_error(format!("Close cmd error: {}", e));
                             }
                         }
                     }
@@ -172,8 +138,13 @@ fn main() -> anyhow::Result<()> {
             }
         }
 
-        loops_since_wifi_check += 1;
-        loops_since_status += 1;
+        if connections_handler.is_healthy() {
+            last_ok = EspSystemTime {}.now();
+        } else if (EspSystemTime {}.now() - last_ok) >= REBOOT_TIMEOUT {
+            log::error!("Connectivity dead too long; restarting");
+            esp_idf_svc::hal::reset::restart();
+        }
+
         FreeRtos::delay_ms(LOOP_DELAY_MS);
     }
 }
