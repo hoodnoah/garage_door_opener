@@ -24,7 +24,7 @@ experimental = ["esp-idf-svc/experimental"]
 
 [dependencies]
 log = "0.4"
-esp-idf-svc = "0.51"
+esp-idf-svc = "0.52"
 lib = {path = "../lib" }
 anyhow = "1.0"
 
